@@ -55,8 +55,8 @@ def build_graph():
     G = nx.DiGraph()
 
     # Add LPs
-    for i in range(N_VAULTS):
-        G.add_node(f"LP{i + 1}", type="lp", state={})
+    # for i in range(N_VAULTS):
+    #     G.add_node(f"LP{i + 1}", type="lp", state={})
 
     # Add Curators
     for i in range(N_VAULTS):
@@ -68,9 +68,8 @@ def build_graph():
             f"Vault{i + 1}",
             type="vault",
             state={
-                "idle_tvl": 0.0,
+                "idle_tvl": random.uniform(10000, 1000000),
                 "internal_ledger_last_state": None,
-                "outstanding_withdrawals": 0.0,
             },
         )
 
@@ -82,7 +81,7 @@ def build_graph():
     )
 
     for i in range(N_VAULTS):
-        G.add_edge(f"LP{i + 1}", f"Vault{i + 1}")
+        # G.add_edge(f"LP{i + 1}", f"Vault{i + 1}")
         G.add_edge(f"Curator{i + 1}", f"Vault{i + 1}")
         G.add_edge("OrionWorker", f"Vault{i + 1}")
     G.add_edge("OrionWorker", "MetaVault")
@@ -90,24 +89,24 @@ def build_graph():
     return G
 
 
-async def lp_node(name, state, send_to, recv_from):
-    while True:
-        # Wait for clock tick
-        await asyncio.sleep(random.uniform(1, 2))
+# async def lp_node(name, state, send_to, recv_from):
+#     while True:
+#         # Wait for clock tick
+#         await asyncio.sleep(random.uniform(1, 2))
 
-        # Simulate LP action
-        transfer_request_amount = random.randint(
-            0, 50
-        )  # TODO: implement negative amounts (withdrawals).
-        logger.info(
-            f"[{name}] Generated transfer request: {transfer_request_amount:.2f}"
-        )
+#         # Simulate LP action
+#         transfer_request_amount = random.randint(
+#             0, 50
+#         )  # TODO: implement negative amounts (withdrawals).
+#         logger.info(
+#             f"[{name}] Generated transfer request: {transfer_request_amount:.2f}"
+#         )
 
-        await send_to(
-            name.replace("LP", "Vault"),
-            {"from": name, "type": "lp_action", "amount": transfer_request_amount},
-        )
-        logger.info(f"[{name}] Sent transfer request to vault")
+#         await send_to(
+#             name.replace("LP", "Vault"),
+#             {"from": name, "type": "lp_action", "amount": transfer_request_amount},
+#         )
+#         logger.info(f"[{name}] Sent transfer request to vault")
 
 
 async def curator_node(name, state, send_to, recv_from):
@@ -326,7 +325,7 @@ class Simulation:
 
     async def start(self):
         node_logic_map = {
-            "lp": lp_node,
+            # "lp": lp_node,
             "curator": curator_node,
             "vault": vault_node,
             "worker": worker_node,
