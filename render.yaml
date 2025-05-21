@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: orionfinance-app
+    env: python
+    buildCommand: |
+      curl -LsSf https://astral.sh/uv/install.sh | sh
+      ./uv --version
+      ./uv pip install
+    startCommand: gunicorn app:server
+    plan: free
+    branch: main
+    region: oregon
