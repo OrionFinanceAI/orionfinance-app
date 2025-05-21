@@ -1,4 +1,4 @@
-N_VAULTS = 2
+N_VAULTS = 5
 
 
 UNIVERSE = [
