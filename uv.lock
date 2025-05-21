@@ -106,6 +106,18 @@ wheels = [
 ]
 
 [[package]]
+name = "dash-cytoscape"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dash" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/33/2d/298a3d89ce664f0af214569281ccc933c0cc3b797705b079bc12c8b2b623/dash_cytoscape-1.0.0.tar.gz", hash = "sha256:0b1a8402005a4e2e7104edf28399f1e340ad7d98d8106dec280edb31c9b8dafd", size = 3985499 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/b3/f65ebbe40bc105d89ed0c828bae8e782839a5562d4aa8ee55b41b02cd7f2/dash_cytoscape-1.0.0-py3-none-any.whl", hash = "sha256:a6e240679e0e3ad20f5ba609b0dadfda2d57b3b1cf8976c7dca9173c4120c748", size = 4002653 },
+]
+
+[[package]]
 name = "distlib"
 version = "0.3.9"
 source = { registry = "https://pypi.org/simple" }
@@ -273,6 +285,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "dash" },
+    { name = "dash-cytoscape" },
     { name = "gunicorn" },
     { name = "plotly" },
 ]
@@ -287,6 +300,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "dash", specifier = ">=3.0.0,<4.0.0" },
+    { name = "dash-cytoscape", specifier = "<=1.0.0,<2.0.0" },
     { name = "gunicorn", specifier = ">=23.0.0,<24.0.0" },
     { name = "plotly", specifier = ">=6.0.0,<7.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.1.0,<4.2.0" },

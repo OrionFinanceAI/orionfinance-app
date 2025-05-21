@@ -23,11 +23,3 @@ repos:
       - id: ruff
         name: ruff-format
         args: [format, --diff]
-
-  - repo: local
-    hooks:
-      - id: pydocstyle
-        name: pydocstyle
-        entry: uv run pydocstyle
-        types: [python]
-        language: system

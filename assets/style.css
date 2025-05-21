@@ -48,8 +48,9 @@ textarea {
 }
 
 .content {
-    padding: 20px;
-    text-align: center;
+    height: calc(100vh - 50px);
+    padding: 0;
+    margin: 0;
 }
 
 .title {

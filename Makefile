@@ -16,7 +16,3 @@ codestyle:
 check-codestyle:
 	uv run ruff check --select I --fix --exit-non-zero-on-fix ./
 	uv run ruff format --diff ./
-
-.PHONY: docs
-docs:
-	uv run pydocstyle
