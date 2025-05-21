@@ -275,14 +275,14 @@ def update_worker_performance(n, sim_state):
     worker_state = sim_state.get("worker_state", {})
     portfolios_matrix = worker_state.get("portfolios_matrix")
     
-    if portfolios_matrix is None:
+    if not portfolios_matrix:
         return html.P("No active portfolios")
     
     # Create performance visualization
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=list(range(len(portfolios_matrix.columns))),
-        y=portfolios_matrix.sum(axis=0),
+        x=portfolios_matrix['columns'],
+        y=[sum(col) for col in zip(*portfolios_matrix['data'])],
         name="Total TVL per Vault"
     ))
     
@@ -301,14 +301,14 @@ def update_metavault_portfolio(n, sim_state):
     metavault_state = sim_state.get("metavault_state", {})
     final_portfolio = metavault_state.get("final_portfolio")
     
-    if final_portfolio is None:
+    if not final_portfolio:
         return html.P("No final portfolio available")
     
     # Create portfolio visualization
     fig = go.Figure()
     fig.add_trace(go.Pie(
-        labels=final_portfolio.index,
-        values=final_portfolio.values,
+        labels=final_portfolio['labels'],
+        values=final_portfolio['values'],
         name="Portfolio Weights"
     ))
     
@@ -329,7 +329,16 @@ def update_curator_portfolios(n, sim_state):
     return html.Div([
         html.Div([
             html.H4(f"Curator {i+1}"),
-            html.P(f"Portfolio Size: {len(state.get('portfolio', {}))} assets")
+            html.P([
+                "Portfolio Status: ",
+                html.Span(
+                    "Active" if state.get('has_portfolio') else "No Portfolio",
+                    style={
+                        "color": "#2a9d8f" if state.get('has_portfolio') else "#e63946",
+                        "font-weight": "bold"
+                    }
+                )
+            ])
         ]) for i, state in enumerate(curator_states.values())
     ])
 

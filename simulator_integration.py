@@ -42,15 +42,43 @@ class SimulatorState:
         clean_vault_states = {}
         for vault_name, state in self.vault_states.items():
             clean_state = {
-                'idle_tvl': state.get('idle_tvl', 0)
+                'idle_tvl': float(state.get('idle_tvl', 0))  # Ensure it's a float
             }
             clean_vault_states[vault_name] = clean_state
 
+        # Clean worker state
+        clean_worker_state = {}
+        if self.worker_state:
+            portfolios_matrix = self.worker_state.get('portfolios_matrix')
+            if portfolios_matrix is not None:
+                # Convert pandas DataFrame to dict of lists
+                clean_worker_state['portfolios_matrix'] = {
+                    'columns': portfolios_matrix.columns.tolist(),
+                    'data': portfolios_matrix.values.tolist()
+                }
+
+        # Clean metavault state
+        clean_metavault_state = {}
+        if self.metavault_state:
+            final_portfolio = self.metavault_state.get('final_portfolio')
+            if final_portfolio is not None:
+                clean_metavault_state['final_portfolio'] = {
+                    'labels': final_portfolio.index.tolist(),
+                    'values': final_portfolio.values.tolist()
+                }
+
+        # Clean curator states
+        clean_curator_states = {}
+        for curator_name, state in self.curator_states.items():
+            clean_curator_states[curator_name] = {
+                'has_portfolio': bool(state.get('portfolio'))  # Just indicate if portfolio exists
+            }
+
         return {
             "vault_states": clean_vault_states,
-            "worker_state": self.worker_state,
-            "metavault_state": self.metavault_state,
-            "curator_states": self.curator_states
+            "worker_state": clean_worker_state,
+            "metavault_state": clean_metavault_state,
+            "curator_states": clean_curator_states
         }
 
     def get_next_state(self) -> Dict[str, Any]:
