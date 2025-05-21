@@ -91,7 +91,7 @@ def build_graph():
 async def curator_node(name, state, send_to, recv_from):
     while True:
         # Wait for clock tick
-        await asyncio.sleep(random.uniform(3, 4))
+        await asyncio.sleep(random.uniform(30, 40))
 
         n_assets = random.randint(1, len(UNIVERSE))
         assets = random.sample(UNIVERSE, n_assets)
