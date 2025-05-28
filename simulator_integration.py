@@ -12,6 +12,7 @@ from main import Simulation
 
 logger = logging.getLogger("OrionSimulation")
 
+
 class SimulatorState:
     def __init__(self):
         self.vault_states = {}
@@ -32,7 +33,7 @@ class SimulatorState:
             self.metavault_state = state
         elif node_type == "curator":
             self.curator_states[node_name] = state
-        
+
         # Put the updated state in the queue for the Dash app
         self._state_queue.put(self.get_state())
 
@@ -42,43 +43,45 @@ class SimulatorState:
         clean_vault_states = {}
         for vault_name, state in self.vault_states.items():
             clean_state = {
-                'idle_tvl': float(state.get('idle_tvl', 0))  # Ensure it's a float
+                "idle_tvl": float(state.get("idle_tvl", 0))  # Ensure it's a float
             }
             clean_vault_states[vault_name] = clean_state
 
         # Clean worker state
         clean_worker_state = {}
         if self.worker_state:
-            portfolios_matrix = self.worker_state.get('portfolios_matrix')
+            portfolios_matrix = self.worker_state.get("portfolios_matrix")
             if portfolios_matrix is not None:
                 # Convert pandas DataFrame to dict of lists
-                clean_worker_state['portfolios_matrix'] = {
-                    'columns': portfolios_matrix.columns.tolist(),
-                    'data': portfolios_matrix.values.tolist()
+                clean_worker_state["portfolios_matrix"] = {
+                    "columns": portfolios_matrix.columns.tolist(),
+                    "data": portfolios_matrix.values.tolist(),
                 }
 
         # Clean metavault state
         clean_metavault_state = {}
         if self.metavault_state:
-            final_portfolio = self.metavault_state.get('final_portfolio')
+            final_portfolio = self.metavault_state.get("final_portfolio")
             if final_portfolio is not None:
-                clean_metavault_state['final_portfolio'] = {
-                    'labels': final_portfolio.index.tolist(),
-                    'values': final_portfolio.values.tolist()
+                clean_metavault_state["final_portfolio"] = {
+                    "labels": final_portfolio.index.tolist(),
+                    "values": final_portfolio.values.tolist(),
                 }
 
         # Clean curator states
         clean_curator_states = {}
         for curator_name, state in self.curator_states.items():
             clean_curator_states[curator_name] = {
-                'has_portfolio': bool(state.get('portfolio'))  # Just indicate if portfolio exists
+                "has_portfolio": bool(
+                    state.get("portfolio")
+                )  # Just indicate if portfolio exists
             }
 
         return {
             "vault_states": clean_vault_states,
             "worker_state": clean_worker_state,
             "metavault_state": clean_metavault_state,
-            "curator_states": clean_curator_states
+            "curator_states": clean_curator_states,
         }
 
     def get_next_state(self) -> Dict[str, Any]:
@@ -95,21 +98,13 @@ class SimulatorState:
 
         self._running = True
         self._simulation_thread = threading.Thread(
-            target=self._run_simulation,
-            args=(graph,),
-            daemon=True
+            target=self._run_simulation, args=(graph,), daemon=True
         )
         self._simulation_thread.start()
 
-    def stop_simulation(self):
-        """Stop the simulation."""
-        self._running = False
-        if self._simulation_thread:
-            self._simulation_thread.join()
-            self._simulation_thread = None
-
     def _run_simulation(self, graph):
         """Run the simulation in a separate thread."""
+
         async def run():
             sim = Simulation(graph)
             # Override the send_to and recv_from methods to capture state updates
@@ -121,17 +116,23 @@ class SimulatorState:
                 if msg["type"] == "vault_state":
                     self.update_state("vault", msg["from"], msg["state"])
                 elif msg["type"] == "final_portfolio":
-                    self.update_state("metavault", "MetaVault", {"final_portfolio": msg["portfolio"]})
-                
+                    self.update_state(
+                        "metavault", "MetaVault", {"final_portfolio": msg["portfolio"]}
+                    )
+
                 await original_send_to(target, msg)
 
             async def new_recv_from(target):
                 msg = await original_recv_from(target)
-                
+
                 # Update state based on received message
                 if msg["type"] == "curator_action":
-                    self.update_state("curator", msg["from"], {"portfolio": msg["encrypted_portfolio"]})
-                
+                    self.update_state(
+                        "curator",
+                        msg["from"],
+                        {"portfolio": msg["encrypted_portfolio"]},
+                    )
+
                 return msg
 
             sim.send_to = new_send_to
@@ -146,5 +147,6 @@ class SimulatorState:
         # Run the async simulation
         asyncio.run(run())
 
+
 # Create a global simulator state instance
-simulator_state = SimulatorState() 
+simulator_state = SimulatorState()
