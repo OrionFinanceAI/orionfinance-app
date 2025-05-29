@@ -26,10 +26,14 @@ app.layout = html.Div(
     [
         html.Nav(
             [
-                html.Img(
-                    src="/assets/OF_lockup_white.png",
-                    className="logo",
-                    style={"height": "40px"},
+                html.A(
+                    html.Img(
+                        src="/assets/OF_lockup_white.png",
+                        className="logo",
+                        style={"height": "40px"},
+                    ),
+                    href="https://orionfinance.ai/",
+                    target="_blank",
                 ),
                 html.A(
                     html.Img(src="/assets/github.png", style={"height": "40px"}),
