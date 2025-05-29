@@ -60,12 +60,14 @@ def build_graph():
         G.add_node(f"Curator{i + 1}", type="curator", state={"key": keys_array[i]})
 
     # Add Vaults
+    tvls_array=np.random.uniform(10000, 1000000, N_VAULTS)
+    tvls_array=tvls_array/np.sum(tvls_array)*100
     for i in range(N_VAULTS):
         G.add_node(
             f"Vault{i + 1}",
             type="vault",
             state={
-                "tvl": random.uniform(10000, 1000000),
+                "tvl": tvls_array[i],
                 "internal_ledger_last_state": None,
             },
         )
@@ -166,7 +168,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
         if state["portfolios_matrix"] is not None:
             # "Measure" ERC4626 performance
             R_t = np.random.normal(
-                loc=0.0, scale=0.03, size=state["portfolios_matrix"].shape[0]
+                loc=0.01, scale=0.03, size=state["portfolios_matrix"].shape[0]
             )
             logger.info(f"[OrionWorker] ERC4626 performance: {R_t}")
             

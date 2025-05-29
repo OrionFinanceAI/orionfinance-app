@@ -13,6 +13,7 @@ from dash.exceptions import PreventUpdate
 
 from main import build_graph
 from simulator_integration import simulator_state
+from utils import N_VAULTS
 
 # Configure logging
 logger = logging.getLogger("OrionSimulation")
@@ -46,21 +47,28 @@ app.layout = html.Div(
                                 html.H3("Vaults State"),
                                 html.Div(id="vault-states"),
                             ],
-                            className="left-panel",
+                            className="panel",
                         ),
                         html.Div(
                             [
                                 html.H3("Curators State"),
                                 html.Div(id="curator-portfolios"),
                             ],
-                            className="center-panel",
+                            className="panel",
                         ),
                         html.Div(
                             [
-                                html.H3("MetaVault States"),
+                                html.H3("Batched Portfolio State"),
                                 html.Div(id="metavault-portfolio"),
                             ],
-                            className="right-panel",
+                            className="panel",
+                        ),
+                        html.Div(
+                            [
+                                html.H3("P&L Oracle State"),
+                                html.Div(id="price-oracle-state"),
+                            ],
+                            className="panel",
                         ),
                     ],
                     className="panels-container",
@@ -87,10 +95,7 @@ app.layout = html.Div(
     State("simulation-state", "data"),
 )
 def update_vault_states(n, sim_state):
-    if not sim_state:
-        raise PreventUpdate
-
-    vault_states = sim_state.get("vault_states", {})
+    vault_states = sim_state.get("vault_states", {}) if sim_state else {}
     return html.Div(
         [
             html.Div(
@@ -100,14 +105,28 @@ def update_vault_states(n, sim_state):
                         [
                             "TVL: ",
                             html.Span(
-                                f"${state.get('tvl', 0):.2f}",
-                                style={"font-weight": "bold", "color": "#2a9d8f"},
+                                f"${state.get('tvl', 'N/A'):.2f}" if state and isinstance(state.get('tvl'), float) else 'N/A',
+                                style={"font-weight": "bold", "color": "#2a9d8f" if state else "#grey"},
                             ),
                         ]
                     ),
                 ]
             )
             for i, state in enumerate(vault_states.values())
+        ] +
+        [
+            html.Div(
+                [
+                    html.H4(f"Vault {i + 1}"),
+                    html.P(
+                        [
+                            "TVL: ",
+                            html.Span("N/A", style={"font-weight": "bold", "color": "#grey"}),
+                        ]
+                    ),
+                ]
+            )
+            for i in range(len(vault_states), N_VAULTS)
         ]
     )
 
@@ -119,11 +138,7 @@ def update_vault_states(n, sim_state):
     State("simulation-state", "data"),
 )
 def update_curator_portfolios(n, sim_state):
-    if not sim_state:
-        raise PreventUpdate
-
-    curator_states = sim_state.get("curator_states", {})
-
+    curator_states = sim_state.get("curator_states", {}) if sim_state else {}
     return html.Div(
         [
             html.Div(
@@ -133,13 +148,9 @@ def update_curator_portfolios(n, sim_state):
                         [
                             "Portfolio Status: ",
                             html.Span(
-                                "Active"
-                                if state.get("has_portfolio")
-                                else "No Portfolio",
+                                "Active" if state and state.get("has_portfolio") else "No Portfolio",
                                 style={
-                                    "color": "#2a9d8f"
-                                    if state.get("has_portfolio")
-                                    else "#e63946",
+                                    "color": "#2a9d8f" if state and state.get("has_portfolio") else "#e63946",
                                     "font-weight": "bold",
                                 },
                             ),
@@ -148,78 +159,121 @@ def update_curator_portfolios(n, sim_state):
                 ]
             )
             for i, state in enumerate(curator_states.values())
+        ] +
+        [
+            html.Div(
+                [
+                    html.H4(f"Curator {i + 1}"),
+                    html.P(
+                        [
+                            "Portfolio Status: ",
+                            html.Span("N/A", style={"font-weight": "bold", "color": "#grey"}),
+                        ]
+                    ),
+                ]
+            )
+            for i in range(len(curator_states), N_VAULTS)
         ]
     )
 
 
-# Callback to update metavault portfolio
+# Callback to update metavault portfolio (Now Batched Portfolio State - Pie Chart)
 @callback(
     Output("metavault-portfolio", "children"),
     Input("update-interval", "n_intervals"),
     State("simulation-state", "data"),
 )
-def update_metavault_portfolio(n, sim_state):
-    if not sim_state:
-        raise PreventUpdate
-
-    metavault_state = sim_state.get("metavault_state", {})
-    worker_state = sim_state.get("worker_state", {})
-    final_portfolio = metavault_state.get("final_portfolio")
-    latest_returns = worker_state.get("latest_returns", [])
-
-    children = []
-    
-    # First subsection: Batched portfolio composition
-    children.append(html.H4("Batched Portfolio Composition"))
-    
-    if final_portfolio:
-        # Create portfolio visualization
-        fig_pie = go.Figure()
-        fig_pie.add_trace(
+def update_batched_portfolio_state(n, sim_state):
+    if not sim_state or not sim_state.get("metavault_state", {}).get("final_portfolio"):
+        # Show placeholder grey pie chart
+        fig_placeholder_pie = go.Figure()
+        fig_placeholder_pie.add_trace(
             go.Pie(
-                labels=final_portfolio["labels"],
-                values=final_portfolio["values"],
-                name="Portfolio Weights",
-                textinfo='none'
+                values=[1],
+                marker_colors=['#808080'], # Grey color
+                hole=0.3, # Optional: make it a donut for distinction
+                textinfo='none',
+                hoverinfo='none'
             )
         )
-        fig_pie.update_layout(
+        fig_placeholder_pie.update_layout(
             showlegend=False,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            height=300
+            margin=dict(l=20, r=20, t=20, b=20),
+            annotations=[dict(text='No Data', x=0.5, y=0.5, font_size=16, showarrow=False, font_color='#aaaaaa')]
         )
-        children.append(dcc.Graph(figure=fig_pie))
-    else:
-        children.append(html.P("No final portfolio available"))
-    
-    # Second subsection: Investment universe return distribution
-    children.append(html.H4("Investment Universe Return Distribution"))
-    
-    if latest_returns:
-        # Create histogram of R_t values
-        fig_hist = go.Figure()
-        fig_hist.add_trace(
-            go.Histogram(
-                x=latest_returns,
-                nbinsx=20,
-                name="Returns Distribution",
-                marker_color='#2a9d8f'
-            )
+        return dcc.Graph(figure=fig_placeholder_pie, style={'height': '100%', 'width': '100%'})
+
+    metavault_state = sim_state.get("metavault_state", {})
+    final_portfolio = metavault_state.get("final_portfolio")
+
+    # Create portfolio visualization (Pie Chart)
+    fig_pie = go.Figure()
+    fig_pie.add_trace(
+        go.Pie(
+            labels=final_portfolio["labels"],
+            values=final_portfolio["values"],
+            name="Portfolio Weights",
+            textinfo='none'
         )
-        fig_hist.update_layout(
+    )
+    fig_pie.update_layout(
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=20, b=20)
+    )
+    return dcc.Graph(figure=fig_pie, style={'height': '100%', 'width': '100%'})
+
+
+# New callback for P&L Oracle State (Histogram)
+@callback(
+    Output("price-oracle-state", "children"),
+    Input("update-interval", "n_intervals"),
+    State("simulation-state", "data"),
+)
+def update_price_oracle_state(n, sim_state):
+    if not sim_state or not sim_state.get("worker_state", {}).get("latest_returns"):
+        # Show placeholder empty grid
+        fig_placeholder_hist = go.Figure()
+        fig_placeholder_hist.update_layout(
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            height=300,
-            xaxis_title="Return",
+            xaxis_title="Return (%)",
             yaxis_title="Frequency",
-            showlegend=False
+            showlegend=False,
+            margin=dict(l=20, r=20, t=20, b=20),
+            xaxis=dict(showgrid=True, zeroline=False, gridcolor='#444444', color='#2a9d8f'), # Dim grid lines
+            yaxis=dict(showgrid=True, zeroline=False, gridcolor='#444444', color='#2a9d8f'), # Dim grid lines
+            annotations=[dict(text='No Data', x=0.5, y=0.5, xref='paper', yref='paper', font_size=16, showarrow=False, font_color='#aaaaaa')]
         )
-        children.append(dcc.Graph(figure=fig_hist))
-    else:
-        children.append(html.P("No return data available"))
+        return dcc.Graph(figure=fig_placeholder_hist, style={'height': '100%', 'width': '100%'})
 
-    return html.Div(children)
+    worker_state = sim_state.get("worker_state", {})
+    latest_returns = worker_state.get("latest_returns", [])
+
+    # Create histogram of R_t values
+    fig_hist = go.Figure()
+    fig_hist.add_trace(
+        go.Histogram(
+            x=[r * 100 for r in latest_returns], # Convert to percentage
+            nbinsx=40,
+            name="Returns Distribution",
+            marker_color='#2a9d8f'
+        )
+    )
+    fig_hist.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis_title="Return (%)",
+        yaxis_title="Frequency", 
+        showlegend=False,
+        margin=dict(l=20, r=20, t=20, b=20),
+        xaxis=dict(gridcolor='#444444', color='#2a9d8f'), # Dim grid lines and match text color
+        yaxis=dict(gridcolor='#444444', color='#2a9d8f')  # Dim grid lines and match text color
+    )
+    return dcc.Graph(figure=fig_hist, style={'height': '100%', 'width': '100%'})
 
 
 # Callback to update simulation state
@@ -270,23 +324,69 @@ app.index_string = """
             .main-content {
                 display: flex;
                 flex-direction: column;
-                height: calc(100vh - 60px);
+                height: calc(100vh - 60px); /* Full viewport height minus navbar */
                 position: relative;
             }
             .panels-container {
                 display: flex;
-                flex: 1;
+                flex-wrap: wrap; /* Allow panels to wrap */
+                flex: 1; /* Allow container to grow and shrink, taking available space */
                 gap: 20px;
                 padding: 20px;
-                overflow: hidden;
+                /* Removed overflow: hidden; to diagnose layout issues if content overflows */
+                /* align-content: flex-start; /* Aligns wrapped lines to the start; useful if rows have different heights */
             }
-            .left-panel, .center-panel, .right-panel {
+            .panel {
                 background-color: #18191a;
                 border-radius: 8px;
-                padding: 20px;
-                overflow-y: auto;
-                flex: 1;
+                padding: 20px; /* Inner padding of the panel */
+                box-sizing: border-box; /* Padding included in element's total width and height */
+                display: flex; /* Use flex for panel content */
+                flex-direction: column; /* Stack content (H3, graph div) vertically */
+                overflow-y: auto; /* Allow vertical scroll within panel if its content overflows its calculated height */
+
+                /* Default for large screens (2x2 grid): */
+                flex-basis: calc(50% - 10px); /* Width: 50% of container minus half the gap */
+                height: calc(50% - 10px);   /* Height: 50% of container minus half the gap */
+                /* No min-height here for the 2x2 view to ensure percentage height is respected */
             }
+
+            /* Target the direct child div that holds the graph or list content */
+            .panel > .js-plotly-plot,          /* Targets the Plotly graph div directly if it's a direct child */
+            .panel > div[id^="vault-states"],
+            .panel > div[id^="curator-portfolios"],
+            .panel > div[id^="metavault-portfolio"],
+            .panel > div[id^="price-oracle-state"] {
+                flex-grow: 1; /* Allows this div to take up available vertical space in the panel */
+                min-height: 0; /* Crucial for flex children to shrink properly and not overflow their parent */
+                /* Ensure width is also handled if direct child is not dcc.Graph which handles its own width */
+                width: 100%;
+            }
+
+            /* Medium screens */
+            @media (max-width: 1200px) and (min-width: 769px) {
+                .panel {
+                    flex-basis: calc(50% - 10px); /* Maintain two panels wide */
+                    height: auto;                 /* Let content determine height */
+                    min-height: 300px;            /* Ensure a decent minimum height for content */
+                }
+            }
+
+            /* Small screens */
+            @media (max-width: 768px) {
+                .panels-container {
+                    flex-direction: column; /* Stack panels vertically */
+                    flex-wrap: nowrap;      /* No wrapping when in single column */
+                    overflow-y: auto;       /* Allow scrolling for the entire container if stacked panels exceed viewport */
+                }
+                .panel {
+                    flex-basis: 100%;    /* Full width for each panel */
+                    height: auto;        /* Let content determine height */
+                    min-height: 300px;   /* Adjust as needed for stacked view */
+                    /* margin-bottom: 20px; /* Gap should handle this in flex-direction: column if supported */
+                }
+            }
+            
             .control-buttons {
                 position: fixed;
                 bottom: 20px;
@@ -330,25 +430,17 @@ app.index_string = """
                 font-size: 1.2em;
                 border-bottom: 1px solid #2a9d8f;
                 padding-bottom: 10px;
+                margin-bottom: 15px; /* Add some space below the header */
             }
             h4 {
                 color: #fff;
                 margin: 10px 0;
+                font-size: 1em;
             }
             /* Graph container styles */
             .js-plotly-plot {
                 width: 100% !important;
                 height: 100% !important;
-            }
-            /* Responsive design */
-            @media (max-width: 1200px) {
-                .panels-container {
-                    flex-direction: column;
-                }
-                .left-panel, .center-panel, .right-panel {
-                    width: 100%;
-                    margin-bottom: 20px;
-                }
             }
         </style>
     </head>
