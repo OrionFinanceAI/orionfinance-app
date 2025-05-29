@@ -60,7 +60,7 @@ def build_graph():
         G.add_node(f"Curator{i + 1}", type="curator", state={"key": keys_array[i]})
 
     # Add Vaults
-    tvls_array=np.random.uniform(10000, 1000000, N_VAULTS)
+    tvls_array=np.random.uniform(10, 20, N_VAULTS)
     tvls_array=tvls_array/np.sum(tvls_array)*100
     for i in range(N_VAULTS):
         G.add_node(

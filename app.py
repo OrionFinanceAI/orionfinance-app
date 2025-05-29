@@ -65,7 +65,7 @@ app.layout = html.Div(
                         ),
                         html.Div(
                             [
-                                html.H3("P&L Oracle State"),
+                                html.H3("Oracle State - Investment Universe P&L"),
                                 html.Div(id="price-oracle-state"),
                             ],
                             className="panel",
@@ -281,7 +281,7 @@ def update_simulation_state(n):
 
 # Callback to control simulation
 @callback(
-    Output("update-interval", "disabled"),
+    [Output("update-interval", "disabled"), Output("start-sim", "style"), Output("start-sim", "disabled")],
     Input("start-sim", "n_clicks"),
     State("update-interval", "disabled"),
 )
@@ -296,9 +296,10 @@ def control_simulation(start_clicks, current_state):
         # Start the simulation
         graph = build_graph()
         simulator_state.start_simulation(graph)
-        return False
+        # Disable the button and change its style
+        return False, {"backgroundColor": "#808080", "color": "#fff", "cursor": "not-allowed"}, True
 
-    return current_state
+    return current_state, dash.no_update, dash.no_update
 
 
 # Add CSS styles
