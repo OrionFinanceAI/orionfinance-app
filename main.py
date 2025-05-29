@@ -106,10 +106,7 @@ async def curator_node(name, state, send_to, recv_from):
         weights = [w / sum(weights) for w in weights]
 
         portfolio = {asset: weights[i] for i, asset in enumerate(assets)}
-        logger.info(f"[{name}] Created portfolio")
-
         encrypted_portfolio = encrypt_json_dict(state["key"], portfolio)
-        logger.info(f"[{name}] Encrypted portfolio")
 
         await send_to(
             name.replace("Curator", "Vault"),

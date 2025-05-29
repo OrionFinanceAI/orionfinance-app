@@ -41,7 +41,9 @@ class SimulatorState:
         elif node_type == "metavault":
             self.metavault_state = state
         elif node_type == "curator":
-            self.curator_states[node_name] = state
+            # Store encrypted portfolio as a string
+            encrypted_portfolio = state.get("portfolio", b"").hex()
+            self.curator_states[node_name] = {"encrypted_portfolio": encrypted_portfolio}
 
         # Put the updated state in the queue for the Dash app
         self._state_queue.put(self.get_state())
@@ -87,9 +89,7 @@ class SimulatorState:
         clean_curator_states = {}
         for curator_name, state in self.curator_states.items():
             clean_curator_states[curator_name] = {
-                "has_portfolio": bool(
-                    state.get("portfolio")
-                )  # Just indicate if portfolio exists
+                "encrypted_portfolio": state.get("encrypted_portfolio", "N/A")
             }
 
         return {

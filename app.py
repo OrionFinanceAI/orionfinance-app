@@ -146,13 +146,10 @@ def update_curator_portfolios(n, sim_state):
                     html.H4(f"Curator {i + 1}"),
                     html.P(
                         [
-                            "Portfolio Status: ",
+                            "Encrypted Intent Portfolio: ",
                             html.Span(
-                                "Active" if state and state.get("has_portfolio") else "No Portfolio",
-                                style={
-                                    "color": "#2a9d8f" if state and state.get("has_portfolio") else "#e63946",
-                                    "font-weight": "bold",
-                                },
+                                f"{state.get('encrypted_portfolio', '')[:10]}...{state.get('encrypted_portfolio', '')[-10:]}" if state.get('encrypted_portfolio') else "",
+                                style={"font-family": "monospace", "color": "#aaa"},
                             ),
                         ]
                     ),
@@ -166,8 +163,8 @@ def update_curator_portfolios(n, sim_state):
                     html.H4(f"Curator {i + 1}"),
                     html.P(
                         [
-                            "Portfolio Status: ",
-                            html.Span("", style={"font-weight": "bold", "color": "#grey"}),
+                            "Encrypted Intent Portfolio: ",
+                            html.Span("", style={"font-family": "monospace", "color": "#aaa"}),
                         ]
                     ),
                 ]
@@ -333,8 +330,6 @@ app.index_string = """
                 flex: 1; /* Allow container to grow and shrink, taking available space */
                 gap: 20px;
                 padding: 20px;
-                /* Removed overflow: hidden; to diagnose layout issues if content overflows */
-                /* align-content: flex-start; /* Aligns wrapped lines to the start; useful if rows have different heights */
             }
             .panel {
                 background-color: #18191a;
@@ -348,7 +343,6 @@ app.index_string = """
                 /* Default for large screens (2x2 grid): */
                 flex-basis: calc(50% - 10px); /* Width: 50% of container minus half the gap */
                 height: calc(50% - 10px);   /* Height: 50% of container minus half the gap */
-                /* No min-height here for the 2x2 view to ensure percentage height is respected */
             }
 
             /* Target the direct child div that holds the graph or list content */
@@ -359,7 +353,6 @@ app.index_string = """
             .panel > div[id^="price-oracle-state"] {
                 flex-grow: 1; /* Allows this div to take up available vertical space in the panel */
                 min-height: 0; /* Crucial for flex children to shrink properly and not overflow their parent */
-                /* Ensure width is also handled if direct child is not dcc.Graph which handles its own width */
                 width: 100%;
             }
 
@@ -383,7 +376,6 @@ app.index_string = """
                     flex-basis: 100%;    /* Full width for each panel */
                     height: auto;        /* Let content determine height */
                     min-height: 300px;   /* Adjust as needed for stacked view */
-                    /* margin-bottom: 20px; /* Gap should handle this in flex-direction: column if supported */
                 }
             }
             
@@ -423,6 +415,9 @@ app.index_string = """
                 height: 40px !important;
                 width: auto;
                 object-fit: contain;
+            }
+            h3, h4, p, span {
+                font-family: Inter, sans-serif;
             }
             h3 {
                 margin-top: 0;
