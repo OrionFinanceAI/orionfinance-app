@@ -20,6 +20,7 @@ class SimulatorState:
         self.metavault_state = {}
         self.curator_states = {}
         self.last_nonzero_tvl = {}  # Track last non-zero TVL for each vault
+        self.latest_returns = []  # Track latest R_t values for histogram
         self._state_queue = Queue()
         self._running = False
         self._simulation_thread = None
@@ -34,6 +35,9 @@ class SimulatorState:
                 self.last_nonzero_tvl[node_name] = tvl
         elif node_type == "worker":
             self.worker_state = state
+            # Track R_t values if available
+            if "latest_returns" in state:
+                self.latest_returns = state["latest_returns"]
         elif node_type == "metavault":
             self.metavault_state = state
         elif node_type == "curator":
@@ -66,6 +70,8 @@ class SimulatorState:
                     "columns": portfolios_matrix.columns.tolist(),
                     "data": portfolios_matrix.values.tolist(),
                 }
+            # Include latest returns for histogram
+            clean_worker_state["latest_returns"] = self.latest_returns
 
         # Clean metavault state
         clean_metavault_state = {}
@@ -116,6 +122,11 @@ class SimulatorState:
 
         async def run():
             sim = Simulation(graph)
+            
+            # Set up callback for worker state updates
+            worker_state = sim.graph.nodes["OrionWorker"]["state"]
+            worker_state['update_callback'] = self.update_state
+            
             # Override the send_to and recv_from methods to capture state updates
             original_send_to = sim.send_to
             original_recv_from = sim.recv_from

@@ -165,26 +165,61 @@ def update_metavault_portfolio(n, sim_state):
     metavault_state = sim_state.get("metavault_state", {})
     worker_state = sim_state.get("worker_state", {})
     final_portfolio = metavault_state.get("final_portfolio")
+    latest_returns = worker_state.get("latest_returns", [])
 
-    if not final_portfolio:
-        return html.P("No final portfolio available")
-
-    # Create portfolio visualization
-    fig = go.Figure()
-    fig.add_trace(
-        go.Pie(
-            labels=final_portfolio["labels"],
-            values=final_portfolio["values"],
-            name="Portfolio Weights",
+    children = []
+    
+    # First subsection: Batched portfolio composition
+    children.append(html.H4("Batched Portfolio Composition"))
+    
+    if final_portfolio:
+        # Create portfolio visualization
+        fig_pie = go.Figure()
+        fig_pie.add_trace(
+            go.Pie(
+                labels=final_portfolio["labels"],
+                values=final_portfolio["values"],
+                name="Portfolio Weights",
+                textinfo='none'
+            )
         )
-    )
-    fig.update_layout(
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
-    )
+        fig_pie.update_layout(
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            height=300
+        )
+        children.append(dcc.Graph(figure=fig_pie))
+    else:
+        children.append(html.P("No final portfolio available"))
+    
+    # Second subsection: Investment universe return distribution
+    children.append(html.H4("Investment Universe Return Distribution"))
+    
+    if latest_returns:
+        # Create histogram of R_t values
+        fig_hist = go.Figure()
+        fig_hist.add_trace(
+            go.Histogram(
+                x=latest_returns,
+                nbinsx=20,
+                name="Returns Distribution",
+                marker_color='#2a9d8f'
+            )
+        )
+        fig_hist.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            height=300,
+            xaxis_title="Return",
+            yaxis_title="Frequency",
+            showlegend=False
+        )
+        children.append(dcc.Graph(figure=fig_hist))
+    else:
+        children.append(html.P("No return data available"))
 
-    return dcc.Graph(figure=fig)
+    return html.Div(children)
 
 
 # Callback to update simulation state

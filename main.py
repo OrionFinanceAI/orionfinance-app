@@ -12,8 +12,6 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from utils import N_VAULTS, UNIVERSE
 
-universe = UNIVERSE[:12]
-
 # Configure logging
 log_filename = f"orion_simulation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 logging.basicConfig(
@@ -99,8 +97,8 @@ async def curator_node(name, state, send_to, recv_from):
         # Wait for clock tick
         await asyncio.sleep(random.uniform(5, 6))
 
-        n_assets = random.randint(1, len(universe))
-        assets = random.sample(universe, n_assets)
+        n_assets = random.randint(1, len(UNIVERSE))
+        assets = random.sample(UNIVERSE, n_assets)
 
         weights = [random.uniform(0, 1) for _ in range(n_assets)]
         weights = [w / sum(weights) for w in weights]
@@ -171,6 +169,13 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
                 loc=0.0, scale=0.03, size=state["portfolios_matrix"].shape[0]
             )
             logger.info(f"[OrionWorker] ERC4626 performance: {R_t}")
+            
+            # Store latest returns for visualization
+            state["latest_returns"] = R_t.tolist()
+            
+            # Notify external state tracking if callback exists
+            if 'update_callback' in state and callable(state['update_callback']):
+                state['update_callback']("worker", name, state)
 
             # Compute ERC4626 performance
             PandL_t = state["portfolios_matrix"].T.dot(R_t).to_numpy()
