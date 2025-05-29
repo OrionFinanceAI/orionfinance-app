@@ -39,22 +39,40 @@ app.layout = html.Div(
         ),
         html.Div(
             [
-                html.H3("Vault States"),
-                html.Div(id="vault-states"),
-                html.H3("Worker Performance"),
-                html.Div(id="worker-performance"),
-                html.H3("MetaVault Portfolio"),
-                html.Div(id="metavault-portfolio"),
-                html.H3("Curator Portfolios"),
-                html.Div(id="curator-portfolios"),
-                # Control buttons
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.H3("Vault States"),
+                                html.Div(id="vault-states"),
+                                html.H3("Curator Portfolios"),
+                                html.Div(id="curator-portfolios"),
+                            ],
+                            className="left-panel",
+                        ),
+                        html.Div(
+                            [
+                                html.H3("MetaVault Portfolio"),
+                                html.Div(id="metavault-portfolio"),
+                            ],
+                            className="center-panel",
+                        ),
+                        html.Div(
+                            [
+                                html.H3("Worker Performance"),
+                                html.Div(id="worker-performance"),
+                            ],
+                            className="right-panel",
+                        ),
+                    ],
+                    className="panels-container",
+                ),
                 html.Div(
                     [
                         html.Button("Start Simulation", id="start-sim", n_clicks=0),
                     ],
                     className="control-buttons",
                 ),
-                # Hidden div for storing simulation state
                 dcc.Store(id="simulation-state"),
                 dcc.Interval(id="update-interval", interval=1000, disabled=True),
             ],
@@ -150,6 +168,7 @@ def update_metavault_portfolio(n, sim_state):
             name="Portfolio Weights",
         )
     )
+    fig.update_layout(showlegend=False)
 
     return dcc.Graph(figure=fig)
 
@@ -241,44 +260,42 @@ app.index_string = """
             }
             .main-content {
                 display: flex;
+                flex-direction: column;
                 height: calc(100vh - 60px);
-                flex-direction: row;
+                position: relative;
             }
-            @media (max-width: 1200px) {
-                .main-content {
-                    flex-direction: column;
-                    height: auto;
-                }
-                .graph-panel, .state-panel {
-                    width: 100%;
-                    height: 50vh;
-                }
-            }
-            .graph-panel {
-                flex: 2;
-                padding: 20px;
-                min-height: 500px;
-            }
-            .state-panel {
+            .panels-container {
+                display: flex;
                 flex: 1;
+                gap: 20px;
                 padding: 20px;
-                background-color: #121212;
+                overflow: hidden;
+            }
+            .left-panel, .center-panel, .right-panel {
+                background-color: #18191a;
+                border-radius: 8px;
+                padding: 20px;
                 overflow-y: auto;
-                min-width: 300px;
-            }
-            .state-panel h3 {
-                margin-top: 20px;
-                color: #fff;
-                font-size: 1.2em;
-            }
-            .state-panel h4 {
-                color: #fff;
-                margin: 10px 0;
+                flex: 1;
             }
             .control-buttons {
-                margin-top: 20px;
-                display: flex;
-                gap: 10px;
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                z-index: 1000;
+            }
+            .control-buttons button {
+                background-color: #2a9d8f;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background-color 0.3s;
+            }
+            .control-buttons button:hover {
+                background-color: #238b7f;
             }
             .navbar {
                 display: flex;
@@ -298,25 +315,31 @@ app.index_string = """
                 width: auto;
                 object-fit: contain;
             }
-            /* Table styles */
-            .dash-table-container {
-                width: 100%;
-                overflow-x: auto;
+            h3 {
+                margin-top: 0;
+                color: #fff;
+                font-size: 1.2em;
+                border-bottom: 1px solid #2a9d8f;
+                padding-bottom: 10px;
             }
-            .dash-table-container .dash-spreadsheet-container {
-                width: 100%;
-                overflow-x: auto;
+            h4 {
+                color: #fff;
+                margin: 10px 0;
             }
             /* Graph container styles */
             .js-plotly-plot {
                 width: 100% !important;
                 height: 100% !important;
             }
-            /* Cytoscape container styles */
-            #orion-graph {
-                width: 100% !important;
-                height: 100% !important;
-                min-height: 500px;
+            /* Responsive design */
+            @media (max-width: 1200px) {
+                .panels-container {
+                    flex-direction: column;
+                }
+                .left-panel, .center-panel, .right-panel {
+                    width: 100%;
+                    margin-bottom: 20px;
+                }
             }
         </style>
     </head>
