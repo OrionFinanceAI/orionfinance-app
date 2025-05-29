@@ -12,6 +12,7 @@ from main import Simulation
 
 logger = logging.getLogger("Orion App")
 
+
 class SimulatorState:
     def __init__(self):
         self.vault_states = {}
@@ -42,7 +43,9 @@ class SimulatorState:
         elif node_type == "curator":
             # Store encrypted portfolio as a string
             encrypted_portfolio = state.get("portfolio", b"").hex()
-            self.curator_states[node_name] = {"encrypted_portfolio": encrypted_portfolio}
+            self.curator_states[node_name] = {
+                "encrypted_portfolio": encrypted_portfolio
+            }
 
         # Put the updated state in the queue for the Dash app
         self._state_queue.put(self.get_state())
@@ -54,8 +57,12 @@ class SimulatorState:
         for vault_name, state in self.vault_states.items():
             current_tvl = float(state.get("tvl", 0))
             # Use last non-zero TVL if current is zero
-            display_tvl = current_tvl if current_tvl > 0 else self.last_nonzero_tvl.get(vault_name, current_tvl)
-            
+            display_tvl = (
+                current_tvl
+                if current_tvl > 0
+                else self.last_nonzero_tvl.get(vault_name, current_tvl)
+            )
+
             clean_state = {
                 "tvl": display_tvl  # Ensure it's a float
             }
@@ -121,11 +128,11 @@ class SimulatorState:
 
         async def run():
             sim = Simulation(graph)
-            
+
             # Set up callback for worker state updates
             worker_state = sim.graph.nodes["OrionWorker"]["state"]
-            worker_state['update_callback'] = self.update_state
-            
+            worker_state["update_callback"] = self.update_state
+
             # Override the send_to and recv_from methods to capture state updates
             original_send_to = sim.send_to
             original_recv_from = sim.recv_from

@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 
-from main import build_graph, log_filename
+from main import build_graph, log_stream
 from simulator_integration import simulator_state
 from utils import N_VAULTS
 
@@ -89,7 +89,18 @@ app.layout = html.Div(
                 html.Div(
                     [
                         html.H3("Logs"),
-                        html.Pre(id="simulation-logs", style={"whiteSpace": "pre-wrap", "overflowY": "scroll", "height": "200px", "backgroundColor": "#18191a", "color": "#fff", "padding": "10px", "borderRadius": "8px"}),
+                        html.Pre(
+                            id="simulation-logs",
+                            style={
+                                "whiteSpace": "pre-wrap",
+                                "overflowY": "scroll",
+                                "height": "200px",
+                                "backgroundColor": "#18191a",
+                                "color": "#fff",
+                                "padding": "10px",
+                                "borderRadius": "8px",
+                            },
+                        ),
                     ],
                     className="panel",
                 ),
@@ -117,23 +128,30 @@ def update_vault_states(n, sim_state):
                         [
                             "TVL: ",
                             html.Span(
-                                f"${state.get('tvl', ''):.2f}" if state and isinstance(state.get('tvl'), float) else '',
-                                style={"font-weight": "bold", "color": "#2a9d8f" if state else "#grey"},
+                                f"${state.get('tvl', ''):.2f}"
+                                if state and isinstance(state.get("tvl"), float)
+                                else "",
+                                style={
+                                    "font-weight": "bold",
+                                    "color": "#2a9d8f" if state else "#grey",
+                                },
                             ),
                         ]
                     ),
                 ]
             )
             for i, state in enumerate(vault_states.values())
-        ] +
-        [
+        ]
+        + [
             html.Div(
                 [
                     html.H4(f"Vault {i + 1}"),
                     html.P(
                         [
                             "TVL: ",
-                            html.Span("", style={"font-weight": "bold", "color": "#grey"}),
+                            html.Span(
+                                "", style={"font-weight": "bold", "color": "#grey"}
+                            ),
                         ]
                     ),
                 ]
@@ -160,7 +178,9 @@ def update_curator_portfolios(n, sim_state):
                         [
                             "Encrypted Intent Portfolio: ",
                             html.Span(
-                                f"{state.get('encrypted_portfolio', '')[:10]}...{state.get('encrypted_portfolio', '')[-10:]}" if state.get('encrypted_portfolio') else "",
+                                f"{state.get('encrypted_portfolio', '')[:10]}...{state.get('encrypted_portfolio', '')[-10:]}"
+                                if state.get("encrypted_portfolio")
+                                else "",
                                 style={"font-family": "monospace", "color": "#aaa"},
                             ),
                         ]
@@ -168,15 +188,17 @@ def update_curator_portfolios(n, sim_state):
                 ]
             )
             for i, state in enumerate(curator_states.values())
-        ] +
-        [
+        ]
+        + [
             html.Div(
                 [
                     html.H4(f"Curator {i + 1}"),
                     html.P(
                         [
                             "Encrypted Intent Portfolio: ",
-                            html.Span("", style={"font-family": "monospace", "color": "#aaa"}),
+                            html.Span(
+                                "", style={"font-family": "monospace", "color": "#aaa"}
+                            ),
                         ]
                     ),
                 ]
@@ -199,27 +221,38 @@ def update_batched_portfolio_state(n, sim_state):
         fig_placeholder_pie.add_trace(
             go.Pie(
                 values=[1],
-                marker_colors=['#808080'], # Grey color
-                hole=0.3, # Optional: make it a donut for distinction
-                textinfo='none',
-                hoverinfo='none'
+                marker_colors=["#808080"],  # Grey color
+                hole=0.3,  # Optional: make it a donut for distinction
+                textinfo="none",
+                hoverinfo="none",
             )
         )
         fig_placeholder_pie.update_layout(
             showlegend=False,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=20, r=20, t=20, b=20),
-            annotations=[dict(text='No Data', x=0.5, y=0.5, font_size=16, showarrow=False, font_color='#aaaaaa')]
+            annotations=[
+                dict(
+                    text="No Data",
+                    x=0.5,
+                    y=0.5,
+                    font_size=16,
+                    showarrow=False,
+                    font_color="#aaaaaa",
+                )
+            ],
         )
-        return dcc.Graph(figure=fig_placeholder_pie, style={'height': '100%', 'width': '100%'})
+        return dcc.Graph(
+            figure=fig_placeholder_pie, style={"height": "100%", "width": "100%"}
+        )
 
     metavault_state = sim_state.get("metavault_state", {})
     final_portfolio = metavault_state.get("final_portfolio")
 
     # Create grey color scale based on number of items
     n_items = len(final_portfolio["labels"])
-    grey_scale = [f'rgb({v},{v},{v})' for v in np.linspace(50, 200, n_items)]
+    grey_scale = [f"rgb({v},{v},{v})" for v in np.linspace(50, 200, n_items)]
 
     # Create portfolio visualization (Pie Chart)
     fig_pie = go.Figure()
@@ -228,17 +261,17 @@ def update_batched_portfolio_state(n, sim_state):
             labels=final_portfolio["labels"],
             values=final_portfolio["values"],
             name="Portfolio Weights",
-            textinfo='none',
-            marker_colors=grey_scale
+            textinfo="none",
+            marker_colors=grey_scale,
         )
     )
     fig_pie.update_layout(
         showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=20, b=20)
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=20, b=20),
     )
-    return dcc.Graph(figure=fig_pie, style={'height': '100%', 'width': '100%'})
+    return dcc.Graph(figure=fig_pie, style={"height": "100%", "width": "100%"})
 
 
 # New callback for P&L Oracle State (Histogram)
@@ -252,17 +285,34 @@ def update_price_oracle_state(n, sim_state):
         # Show placeholder empty grid
         fig_placeholder_hist = go.Figure()
         fig_placeholder_hist.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
             xaxis_title="Return (%)",
             yaxis_title="Frequency",
             showlegend=False,
             margin=dict(l=20, r=20, t=20, b=20),
-            xaxis=dict(showgrid=True, zeroline=False, gridcolor='#444444', color='#2a9d8f'), # Dim grid lines
-            yaxis=dict(showgrid=True, zeroline=False, gridcolor='#444444', color='#2a9d8f'), # Dim grid lines
-            annotations=[dict(text='No Data', x=0.5, y=0.5, xref='paper', yref='paper', font_size=16, showarrow=False, font_color='#aaaaaa')]
+            xaxis=dict(
+                showgrid=True, zeroline=False, gridcolor="#444444", color="#2a9d8f"
+            ),  # Dim grid lines
+            yaxis=dict(
+                showgrid=True, zeroline=False, gridcolor="#444444", color="#2a9d8f"
+            ),  # Dim grid lines
+            annotations=[
+                dict(
+                    text="No Data",
+                    x=0.5,
+                    y=0.5,
+                    xref="paper",
+                    yref="paper",
+                    font_size=16,
+                    showarrow=False,
+                    font_color="#aaaaaa",
+                )
+            ],
         )
-        return dcc.Graph(figure=fig_placeholder_hist, style={'height': '100%', 'width': '100%'})
+        return dcc.Graph(
+            figure=fig_placeholder_hist, style={"height": "100%", "width": "100%"}
+        )
 
     worker_state = sim_state.get("worker_state", {})
     latest_returns = worker_state.get("latest_returns", [])
@@ -271,23 +321,27 @@ def update_price_oracle_state(n, sim_state):
     fig_hist = go.Figure()
     fig_hist.add_trace(
         go.Histogram(
-            x=[r * 100 for r in latest_returns], # Convert to percentage
+            x=[r * 100 for r in latest_returns],  # Convert to percentage
             nbinsx=40,
             name="Returns Distribution",
-            marker_color='#2a9d8f'
+            marker_color="#2a9d8f",
         )
     )
     fig_hist.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         xaxis_title="Return (%)",
-        yaxis_title="Frequency", 
+        yaxis_title="Frequency",
         showlegend=False,
         margin=dict(l=20, r=20, t=20, b=20),
-        xaxis=dict(gridcolor='#444444', color='#2a9d8f'), # Dim grid lines and match text color
-        yaxis=dict(gridcolor='#444444', color='#2a9d8f')  # Dim grid lines and match text color
+        xaxis=dict(
+            gridcolor="#444444", color="#2a9d8f"
+        ),  # Dim grid lines and match text color
+        yaxis=dict(
+            gridcolor="#444444", color="#2a9d8f"
+        ),  # Dim grid lines and match text color
     )
-    return dcc.Graph(figure=fig_hist, style={'height': '100%', 'width': '100%'})
+    return dcc.Graph(figure=fig_hist, style={"height": "100%", "width": "100%"})
 
 
 # Callback to update simulation state
@@ -298,7 +352,11 @@ def update_simulation_state(n):
 
 # Callback to control simulation
 @callback(
-    [Output("update-interval", "disabled"), Output("start-sim", "style"), Output("start-sim", "disabled")],
+    [
+        Output("update-interval", "disabled"),
+        Output("start-sim", "style"),
+        Output("start-sim", "disabled"),
+    ],
     Input("start-sim", "n_clicks"),
     State("update-interval", "disabled"),
 )
@@ -314,7 +372,11 @@ def control_simulation(start_clicks, current_state):
         graph = build_graph()
         simulator_state.start_simulation(graph)
         # Disable the button and change its style
-        return False, {"backgroundColor": "#808080", "color": "#fff", "cursor": "not-allowed"}, True
+        return (
+            False,
+            {"backgroundColor": "#808080", "color": "#fff", "cursor": "not-allowed"},
+            True,
+        )
 
     return current_state, dash.no_update, dash.no_update
 
@@ -325,9 +387,10 @@ def control_simulation(start_clicks, current_state):
 )
 def update_logs(n):
     try:
-        with open(log_filename, "r") as log_file:
-            logs = log_file.readlines()
-            return "".join(logs[-20:])  # Display the last 20 lines of the log
+        # Read logs from the StringIO stream
+        log_stream.seek(0)  # Go to the start of the StringIO stream
+        logs = log_stream.readlines()
+        return "".join(logs[-20:])  # Display the last 20 lines of the log
     except Exception as e:
         return f"Error reading logs: {str(e)}"
 

@@ -1,9 +1,9 @@
 import asyncio
+import io
 import json
 import logging
 import os
 import random
-from datetime import datetime
 
 import networkx as nx
 import numpy as np
@@ -12,14 +12,15 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from utils import N_VAULTS, UNIVERSE
 
+# Create a StringIO stream to capture logs
+log_stream = io.StringIO()
+
 # Configure logging
-log_filename = f"orion_simulation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     handlers=[
-        logging.FileHandler(log_filename),
-        logging.StreamHandler(),  # Also show logs in console
+        logging.StreamHandler(log_stream),  # Redirect logs to StringIO
     ],
 )
 
@@ -60,8 +61,8 @@ def build_graph():
         G.add_node(f"Curator{i + 1}", type="curator", state={"key": keys_array[i]})
 
     # Add Vaults
-    tvls_array=np.random.uniform(10, 20, N_VAULTS)
-    tvls_array=tvls_array/np.sum(tvls_array)*100
+    tvls_array = np.random.uniform(10, 20, N_VAULTS)
+    tvls_array = tvls_array / np.sum(tvls_array) * 100
     for i in range(N_VAULTS):
         G.add_node(
             f"Vault{i + 1}",
@@ -137,9 +138,7 @@ async def vault_node(name, state, send_to, recv_from):
             transfer_amount = msg["amount"]
             # Check if transfer would make`` TVL negative
             if transfer_amount > state["tvl"]:
-                logger.warning(
-                    f"[{name}] Rejected transfer: would make TVL negative"
-                )
+                logger.warning(f"[{name}] Rejected transfer: would make TVL negative")
                 transfer_amount = state["tvl"]  # Only transfer what's available
             state["tvl"] -= transfer_amount
             logger.info(
@@ -162,13 +161,13 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
             # "Measure" ERC4626 performance
             R_t = np.random.normal(
                 loc=0.01, scale=0.03, size=state["portfolios_matrix"].shape[0]
-            )            
+            )
             # Store latest returns for visualization
             state["latest_returns"] = R_t.tolist()
-            
+
             # Notify external state tracking if callback exists
-            if 'update_callback' in state and callable(state['update_callback']):
-                state['update_callback']("worker", name, state)
+            if "update_callback" in state and callable(state["update_callback"]):
+                state["update_callback"]("worker", name, state)
 
             # Compute ERC4626 performance
             PandL_t = state["portfolios_matrix"].T.dot(R_t).to_numpy()
@@ -183,9 +182,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
             # Update each vault's TVL with the corresponding updated TVL
             for i, tvl in enumerate(updated_tvl):
                 vault_name = f"Vault{i + 1}"
-                logger.info(
-                    f"[OrionWorker] Updating {vault_name} TVL to {tvl:.2f}"
-                )
+                logger.info(f"[OrionWorker] Updating {vault_name} TVL to {tvl:.2f}")
                 await send_to(vault_name, {"type": "update_tvl", "amount": tvl})
 
         # Request states from all vaults
@@ -207,9 +204,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
         portfolio_dfs = []
         for vault_name, vault_state in vault_states.items():
             logger.info(f"[OrionWorker] Processing {vault_name}")
-            logger.info(
-                f"[OrionWorker] Current TVL: {vault_state['tvl']:.2f}"
-            )
+            logger.info(f"[OrionWorker] Current TVL: {vault_state['tvl']:.2f}")
 
             if vault_state["internal_ledger_last_state"]:
                 curator_idx = int(vault_name.replace("Vault", "")) - 1
