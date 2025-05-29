@@ -7,16 +7,17 @@ This is a Dash web application that simulates and visualizes privacy-preserving 
 import logging
 
 import dash
+import numpy as np
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 
-from main import build_graph
+from main import build_graph, log_filename
 from simulator_integration import simulator_state
 from utils import N_VAULTS
 
 # Configure logging
-logger = logging.getLogger("OrionSimulation")
+logger = logging.getLogger("Orion App")
 
 app = dash.Dash(__name__, title="Orion Finance", suppress_callback_exceptions=True)
 server = app.server
@@ -81,6 +82,13 @@ app.layout = html.Div(
                 ),
                 dcc.Store(id="simulation-state"),
                 dcc.Interval(id="update-interval", interval=1000, disabled=True),
+                html.Div(
+                    [
+                        html.H3("Logs"),
+                        html.Pre(id="simulation-logs", style={"whiteSpace": "pre-wrap", "overflowY": "scroll", "height": "200px", "backgroundColor": "#18191a", "color": "#fff", "padding": "10px", "borderRadius": "8px"}),
+                    ],
+                    className="panel",
+                ),
             ],
             className="main-content",
         ),
@@ -205,6 +213,10 @@ def update_batched_portfolio_state(n, sim_state):
     metavault_state = sim_state.get("metavault_state", {})
     final_portfolio = metavault_state.get("final_portfolio")
 
+    # Create grey color scale based on number of items
+    n_items = len(final_portfolio["labels"])
+    grey_scale = [f'rgb({v},{v},{v})' for v in np.linspace(50, 200, n_items)]
+
     # Create portfolio visualization (Pie Chart)
     fig_pie = go.Figure()
     fig_pie.add_trace(
@@ -212,7 +224,8 @@ def update_batched_portfolio_state(n, sim_state):
             labels=final_portfolio["labels"],
             values=final_portfolio["values"],
             name="Portfolio Weights",
-            textinfo='none'
+            textinfo='none',
+            marker_colors=grey_scale
         )
     )
     fig_pie.update_layout(
@@ -302,6 +315,19 @@ def control_simulation(start_clicks, current_state):
     return current_state, dash.no_update, dash.no_update
 
 
+@callback(
+    Output("simulation-logs", "children"),
+    Input("update-interval", "n_intervals"),
+)
+def update_logs(n):
+    try:
+        with open(log_filename, "r") as log_file:
+            logs = log_file.readlines()
+            return "".join(logs[-20:])  # Display the last 20 lines of the log
+    except Exception as e:
+        return f"Error reading logs: {str(e)}"
+
+
 # Add CSS styles
 app.index_string = """
 <!DOCTYPE html>
@@ -324,6 +350,7 @@ app.index_string = """
                 flex-direction: column;
                 height: calc(100vh - 60px); /* Full viewport height minus navbar */
                 position: relative;
+                overflow-y: auto; /* Allow scrolling if content overflows */
             }
             .panels-container {
                 display: flex;
@@ -343,7 +370,7 @@ app.index_string = """
 
                 /* Default for large screens (2x2 grid): */
                 flex-basis: calc(50% - 10px); /* Width: 50% of container minus half the gap */
-                height: calc(50% - 10px);   /* Height: 50% of container minus half the gap */
+                min-height: 300px;   /* Ensure a decent minimum height for content */
             }
 
             /* Target the direct child div that holds the graph or list content */
@@ -351,7 +378,8 @@ app.index_string = """
             .panel > div[id^="vault-states"],
             .panel > div[id^="curator-portfolios"],
             .panel > div[id^="metavault-portfolio"],
-            .panel > div[id^="price-oracle-state"] {
+            .panel > div[id^="price-oracle-state"],
+            .panel > div[id^="simulation-logs"] {
                 flex-grow: 1; /* Allows this div to take up available vertical space in the panel */
                 min-height: 0; /* Crucial for flex children to shrink properly and not overflow their parent */
                 width: 100%;

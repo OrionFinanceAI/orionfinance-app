@@ -10,8 +10,7 @@ from typing import Any, Dict
 
 from main import Simulation
 
-logger = logging.getLogger("OrionSimulation")
-
+logger = logging.getLogger("Orion App")
 
 class SimulatorState:
     def __init__(self):

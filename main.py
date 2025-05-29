@@ -23,7 +23,7 @@ logging.basicConfig(
     ],
 )
 
-logger = logging.getLogger("OrionSimulation")
+logger = logging.getLogger("Orion App")
 
 
 def encrypt_json_dict(aes_key: bytes, data: dict) -> bytes:
@@ -122,15 +122,12 @@ async def curator_node(name, state, send_to, recv_from):
 async def vault_node(name, state, send_to, recv_from):
     while True:
         msg = await recv_from(name)
-        logger.info(f"[{name}] Received message of type: {msg['type']}")
-
         if msg["type"] == "curator_action":
             logger.info(f"[{name}] Received encrypted portfolio from {msg['from']}")
             state["internal_ledger_last_state"] = msg["encrypted_portfolio"]
             logger.info(f"[{name}] Stored encrypted portfolio")
 
         elif msg["type"] == "worker_request":
-            logger.info(f"[{name}] Sending state to worker")
             await send_to(
                 "OrionWorker", {"from": name, "type": "vault_state", "state": state}
             )
@@ -158,7 +155,6 @@ async def vault_node(name, state, send_to, recv_from):
 
 async def worker_node(name, state, send_to, recv_from, worker_clock):
     while True:
-        logger.info("[OrionWorker] Starting new cycle")
         # Wait for clock tick
         await asyncio.sleep(5)
 
@@ -166,9 +162,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
             # "Measure" ERC4626 performance
             R_t = np.random.normal(
                 loc=0.01, scale=0.03, size=state["portfolios_matrix"].shape[0]
-            )
-            logger.info(f"[OrionWorker] ERC4626 performance: {R_t}")
-            
+            )            
             # Store latest returns for visualization
             state["latest_returns"] = R_t.tolist()
             
@@ -178,7 +172,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
 
             # Compute ERC4626 performance
             PandL_t = state["portfolios_matrix"].T.dot(R_t).to_numpy()
-            logger.info(f"[OrionWorker] ERC4626 performance: {PandL_t}")
+            logger.info(f"[OrionWorker] Portfolios performance: {PandL_t}")
 
             active_tvl = state["portfolios_matrix"].sum(axis=0).to_numpy()
             logger.info(f"[OrionWorker] Active TVL: {active_tvl}")
@@ -195,14 +189,12 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
                 await send_to(vault_name, {"type": "update_tvl", "amount": tvl})
 
         # Request states from all vaults
-        logger.info("[OrionWorker] Requesting states from all vaults")
         vault_states = {}
         for i in range(N_VAULTS):
             vault_name = f"Vault{i + 1}"
             await send_to(vault_name, {"type": "worker_request"})
 
         # Collect responses from all vaults
-        logger.info("[OrionWorker] Collecting vault states")
         for _ in range(N_VAULTS):
             msg = await recv_from(name)
             if msg["type"] == "vault_state":
@@ -261,8 +253,6 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
 
             # Compute final portfolio
             final_portfolio = state["portfolios_matrix"].sum(axis=1)
-            logger.info(f"[OrionWorker] Final portfolio computed:\n{final_portfolio}")
-
             # Send final portfolio to metavault
             await send_to(
                 "MetaVault",
@@ -273,21 +263,15 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
             )
             logger.info("[OrionWorker] Sent final portfolio to MetaVault")
         else:
-            logger.info("[OrionWorker] No portfolios to create matrix")
             state["portfolios_matrix"] = None
 
 
 async def metavault_node(name, state, send_to, recv_from):
     while True:
         msg = await recv_from(name)
-        logger.info(f"[{name}] Received message of type: {msg['type']}")
-
         if msg["type"] == "final_portfolio":
             logger.info(f"[{name}] Received final portfolio")
             state["final_portfolio"] = msg["portfolio"]
-            logger.info(
-                f"[{name}] Updated state - Final portfolio:\n{state['final_portfolio']}"
-            )
 
 
 class Simulation:
