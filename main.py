@@ -67,7 +67,7 @@ def build_graph():
             f"Vault{i + 1}",
             type="vault",
             state={
-                "idle_tvl": random.uniform(10000, 1000000),
+                "tvl": random.uniform(10000, 1000000),
                 "internal_ledger_last_state": None,
             },
         )
@@ -97,7 +97,7 @@ def build_graph():
 async def curator_node(name, state, send_to, recv_from):
     while True:
         # Wait for clock tick
-        await asyncio.sleep(random.uniform(5, 10))
+        await asyncio.sleep(random.uniform(5, 6))
 
         n_assets = random.randint(1, len(universe))
         assets = random.sample(universe, n_assets)
@@ -139,31 +139,31 @@ async def vault_node(name, state, send_to, recv_from):
             )
 
         elif msg["type"] == "tvl_transfer":
-            logger.info(f"[{name}] Current idle TVL: {state['idle_tvl']:.2f}")
+            logger.info(f"[{name}] Current TVL: {state['tvl']:.2f}")
             transfer_amount = msg["amount"]
-            # Check if transfer would make idle TVL negative
-            if transfer_amount > state["idle_tvl"]:
+            # Check if transfer would make`` TVL negative
+            if transfer_amount > state["tvl"]:
                 logger.warning(
-                    f"[{name}] Rejected transfer: would make idle TVL negative"
+                    f"[{name}] Rejected transfer: would make TVL negative"
                 )
-                transfer_amount = state["idle_tvl"]  # Only transfer what's available
-            state["idle_tvl"] -= transfer_amount
+                transfer_amount = state["tvl"]  # Only transfer what's available
+            state["tvl"] -= transfer_amount
             logger.info(
                 f"[{name}] Transferred {transfer_amount:.2f} from idle to active TVL"
             )
-            logger.info(f"[{name}] New idle TVL: {state['idle_tvl']:.2f}")
+            logger.info(f"[{name}] New TVL: {state['tvl']:.2f}")
 
-        elif msg["type"] == "update_idle_tvl":
-            logger.info(f"[{name}] Current idle TVL: {state['idle_tvl']:.2f}")
-            state["idle_tvl"] = msg["amount"]
-            logger.info(f"[{name}] Updated idle TVL to: {state['idle_tvl']:.2f}")
+        elif msg["type"] == "update_tvl":
+            logger.info(f"[{name}] Current TVL: {state['tvl']:.2f}")
+            state["tvl"] = msg["amount"]
+            logger.info(f"[{name}] Updated TVL to: {state['tvl']:.2f}")
 
 
 async def worker_node(name, state, send_to, recv_from, worker_clock):
     while True:
         logger.info("[OrionWorker] Starting new cycle")
         # Wait for clock tick
-        await asyncio.sleep(3)
+        await asyncio.sleep(5)
 
         if state["portfolios_matrix"] is not None:
             # "Measure" ERC4626 performance
@@ -182,13 +182,13 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
             updated_tvl = active_tvl + PandL_t
             logger.info(f"[OrionWorker] Updated TVL: {updated_tvl}")
 
-            # Update each vault's idle TVL with the corresponding updated TVL
+            # Update each vault's TVL with the corresponding updated TVL
             for i, tvl in enumerate(updated_tvl):
                 vault_name = f"Vault{i + 1}"
                 logger.info(
-                    f"[OrionWorker] Updating {vault_name} idle TVL to {tvl:.2f}"
+                    f"[OrionWorker] Updating {vault_name} TVL to {tvl:.2f}"
                 )
-                await send_to(vault_name, {"type": "update_idle_tvl", "amount": tvl})
+                await send_to(vault_name, {"type": "update_tvl", "amount": tvl})
 
         # Request states from all vaults
         logger.info("[OrionWorker] Requesting states from all vaults")
@@ -212,7 +212,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
         for vault_name, vault_state in vault_states.items():
             logger.info(f"[OrionWorker] Processing {vault_name}")
             logger.info(
-                f"[OrionWorker] Current idle TVL: {vault_state['idle_tvl']:.2f}"
+                f"[OrionWorker] Current TVL: {vault_state['tvl']:.2f}"
             )
 
             if vault_state["internal_ledger_last_state"]:
@@ -228,7 +228,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
                 )
 
                 # Transfer TVL from idle to active
-                transfer_amount = vault_state["idle_tvl"]
+                transfer_amount = vault_state["tvl"]
                 if transfer_amount > 0:
                     logger.info(
                         f"[OrionWorker] Initiating transfer of {transfer_amount:.2f}"

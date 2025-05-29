@@ -43,24 +43,22 @@ app.layout = html.Div(
                     [
                         html.Div(
                             [
-                                html.H3("Vault States"),
+                                html.H3("Vaults State"),
                                 html.Div(id="vault-states"),
-                                html.H3("Curator Portfolios"),
-                                html.Div(id="curator-portfolios"),
                             ],
                             className="left-panel",
                         ),
                         html.Div(
                             [
-                                html.H3("MetaVault Portfolio"),
-                                html.Div(id="metavault-portfolio"),
+                                html.H3("Curators State"),
+                                html.Div(id="curator-portfolios"),
                             ],
                             className="center-panel",
                         ),
                         html.Div(
                             [
-                                html.H3("Worker Performance"),
-                                html.Div(id="worker-performance"),
+                                html.H3("MetaVault States"),
+                                html.Div(id="metavault-portfolio"),
                             ],
                             className="right-panel",
                         ),
@@ -100,9 +98,9 @@ def update_vault_states(n, sim_state):
                     html.H4(f"Vault {i + 1}"),
                     html.P(
                         [
-                            "Idle TVL: ",
+                            "TVL: ",
                             html.Span(
-                                f"{state.get('idle_tvl', 0):.2f}",
+                                f"${state.get('tvl', 0):.2f}",
                                 style={"font-weight": "bold", "color": "#2a9d8f"},
                             ),
                         ]
@@ -112,70 +110,6 @@ def update_vault_states(n, sim_state):
             for i, state in enumerate(vault_states.values())
         ]
     )
-
-
-# Callback to update worker performance
-@callback(
-    Output("worker-performance", "children"),
-    Input("update-interval", "n_intervals"),
-    State("simulation-state", "data"),
-)
-def update_worker_performance(n, sim_state):
-    if not sim_state:
-        raise PreventUpdate
-
-    worker_state = sim_state.get("worker_state", {})
-    portfolios_matrix = worker_state.get("portfolios_matrix")
-
-    if not portfolios_matrix:
-        return html.P("No active portfolios")
-
-    # Create performance visualization
-    fig = go.Figure()
-    fig.add_trace(
-        go.Bar(
-            x=portfolios_matrix["columns"],
-            y=[sum(col) for col in zip(*portfolios_matrix["data"])],
-            name="Total TVL per Vault",
-        )
-    )
-
-    return dcc.Graph(figure=fig)
-
-
-# Callback to update metavault portfolio
-@callback(
-    Output("metavault-portfolio", "children"),
-    Input("update-interval", "n_intervals"),
-    State("simulation-state", "data"),
-)
-def update_metavault_portfolio(n, sim_state):
-    if not sim_state:
-        raise PreventUpdate
-
-    metavault_state = sim_state.get("metavault_state", {})
-    worker_state = sim_state.get("worker_state", {})
-    final_portfolio = metavault_state.get("final_portfolio")
-
-    if not final_portfolio:
-        return html.P("No final portfolio available")
-
-    # Create portfolio visualization
-    fig = go.Figure()
-    fig.add_trace(
-        go.Pie(
-            labels=final_portfolio["labels"],
-            values=final_portfolio["values"],
-            name="Portfolio Weights",
-        )
-    )
-    fig.update_layout(
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
-    )
-
-    return dcc.Graph(figure=fig)
 
 
 # Callback to update curator portfolios
@@ -216,6 +150,41 @@ def update_curator_portfolios(n, sim_state):
             for i, state in enumerate(curator_states.values())
         ]
     )
+
+
+# Callback to update metavault portfolio
+@callback(
+    Output("metavault-portfolio", "children"),
+    Input("update-interval", "n_intervals"),
+    State("simulation-state", "data"),
+)
+def update_metavault_portfolio(n, sim_state):
+    if not sim_state:
+        raise PreventUpdate
+
+    metavault_state = sim_state.get("metavault_state", {})
+    worker_state = sim_state.get("worker_state", {})
+    final_portfolio = metavault_state.get("final_portfolio")
+
+    if not final_portfolio:
+        return html.P("No final portfolio available")
+
+    # Create portfolio visualization
+    fig = go.Figure()
+    fig.add_trace(
+        go.Pie(
+            labels=final_portfolio["labels"],
+            values=final_portfolio["values"],
+            name="Portfolio Weights",
+        )
+    )
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+
+    return dcc.Graph(figure=fig)
 
 
 # Callback to update simulation state

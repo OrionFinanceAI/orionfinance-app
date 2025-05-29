@@ -19,6 +19,7 @@ class SimulatorState:
         self.worker_state = {}
         self.metavault_state = {}
         self.curator_states = {}
+        self.last_nonzero_tvl = {}  # Track last non-zero TVL for each vault
         self._state_queue = Queue()
         self._running = False
         self._simulation_thread = None
@@ -27,6 +28,10 @@ class SimulatorState:
         """Update the state of a specific node."""
         if node_type == "vault":
             self.vault_states[node_name] = state
+            # Track non-zero TVL values
+            tvl = state.get("tvl", 0)
+            if tvl > 0:
+                self.last_nonzero_tvl[node_name] = tvl
         elif node_type == "worker":
             self.worker_state = state
         elif node_type == "metavault":
@@ -42,8 +47,12 @@ class SimulatorState:
         # Create a clean copy of vault states without the encrypted data
         clean_vault_states = {}
         for vault_name, state in self.vault_states.items():
+            current_tvl = float(state.get("tvl", 0))
+            # Use last non-zero TVL if current is zero
+            display_tvl = current_tvl if current_tvl > 0 else self.last_nonzero_tvl.get(vault_name, current_tvl)
+            
             clean_state = {
-                "idle_tvl": float(state.get("idle_tvl", 0))  # Ensure it's a float
+                "tvl": display_tvl  # Ensure it's a float
             }
             clean_vault_states[vault_name] = clean_state
 
