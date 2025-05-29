@@ -154,6 +154,7 @@ def update_metavault_portfolio(n, sim_state):
         raise PreventUpdate
 
     metavault_state = sim_state.get("metavault_state", {})
+    worker_state = sim_state.get("worker_state", {})
     final_portfolio = metavault_state.get("final_portfolio")
 
     if not final_portfolio:
@@ -168,7 +169,11 @@ def update_metavault_portfolio(n, sim_state):
             name="Portfolio Weights",
         )
     )
-    fig.update_layout(showlegend=False)
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
 
     return dcc.Graph(figure=fig)
 

@@ -97,7 +97,7 @@ def build_graph():
 async def curator_node(name, state, send_to, recv_from):
     while True:
         # Wait for clock tick
-        await asyncio.sleep(random.uniform(30, 40))
+        await asyncio.sleep(random.uniform(5, 10))
 
         n_assets = random.randint(1, len(universe))
         assets = random.sample(universe, n_assets)
@@ -163,7 +163,7 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
     while True:
         logger.info("[OrionWorker] Starting new cycle")
         # Wait for clock tick
-        await asyncio.sleep(5)
+        await asyncio.sleep(3)
 
         if state["portfolios_matrix"] is not None:
             # "Measure" ERC4626 performance
