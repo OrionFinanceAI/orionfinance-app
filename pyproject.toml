@@ -2,7 +2,7 @@
 name = "orionfinance-app"
 version = "0.1.0"
 description = "Interactive Dash frontend for Orion Finance protocol simulator"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 readme = "README.md"
 authors = [
     { name = "Matteo Manzi" },
