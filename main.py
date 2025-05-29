@@ -1,9 +1,9 @@
 import asyncio
+import io
 import json
 import logging
 import os
 import random
-from datetime import datetime
 
 import networkx as nx
 import numpy as np
@@ -12,18 +12,19 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from utils import N_VAULTS, UNIVERSE
 
+# Create a StringIO stream to capture logs
+log_stream = io.StringIO()
+
 # Configure logging
-log_filename = f"orion_simulation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     handlers=[
-        logging.FileHandler(log_filename),
-        logging.StreamHandler(),  # Also show logs in console
+        logging.StreamHandler(log_stream),  # Redirect logs to StringIO
     ],
 )
 
-logger = logging.getLogger("OrionSimulation")
+logger = logging.getLogger("Orion App")
 
 
 def encrypt_json_dict(aes_key: bytes, data: dict) -> bytes:
@@ -60,20 +61,26 @@ def build_graph():
         G.add_node(f"Curator{i + 1}", type="curator", state={"key": keys_array[i]})
 
     # Add Vaults
+    tvls_array = np.random.uniform(10, 20, N_VAULTS)
+    tvls_array = tvls_array / np.sum(tvls_array) * 100
     for i in range(N_VAULTS):
         G.add_node(
             f"Vault{i + 1}",
             type="vault",
             state={
-                "idle_tvl": random.uniform(10000, 1000000),
+                "tvl": tvls_array[i],
                 "internal_ledger_last_state": None,
             },
         )
 
-    G.add_node("OrionWorker", type="worker", state={
-        "key_array": keys_array,
-        "portfolios_matrix": None,
-    })
+    G.add_node(
+        "OrionWorker",
+        type="worker",
+        state={
+            "key_array": keys_array,
+            "portfolios_matrix": None,
+        },
+    )
     G.add_node(
         "MetaVault",
         type="metavault",
@@ -91,7 +98,7 @@ def build_graph():
 async def curator_node(name, state, send_to, recv_from):
     while True:
         # Wait for clock tick
-        await asyncio.sleep(random.uniform(30, 40))
+        await asyncio.sleep(random.uniform(5, 6))
 
         n_assets = random.randint(1, len(UNIVERSE))
         assets = random.sample(UNIVERSE, n_assets)
@@ -100,10 +107,7 @@ async def curator_node(name, state, send_to, recv_from):
         weights = [w / sum(weights) for w in weights]
 
         portfolio = {asset: weights[i] for i, asset in enumerate(assets)}
-        logger.info(f"[{name}] Created portfolio")
-
         encrypted_portfolio = encrypt_json_dict(state["key"], portfolio)
-        logger.info(f"[{name}] Encrypted portfolio")
 
         await send_to(
             name.replace("Curator", "Vault"),
@@ -119,50 +123,55 @@ async def curator_node(name, state, send_to, recv_from):
 async def vault_node(name, state, send_to, recv_from):
     while True:
         msg = await recv_from(name)
-        logger.info(f"[{name}] Received message of type: {msg['type']}")
-
         if msg["type"] == "curator_action":
             logger.info(f"[{name}] Received encrypted portfolio from {msg['from']}")
             state["internal_ledger_last_state"] = msg["encrypted_portfolio"]
             logger.info(f"[{name}] Stored encrypted portfolio")
 
         elif msg["type"] == "worker_request":
-            logger.info(f"[{name}] Sending state to worker")
             await send_to(
                 "OrionWorker", {"from": name, "type": "vault_state", "state": state}
             )
 
         elif msg["type"] == "tvl_transfer":
-            logger.info(f"[{name}] Current idle TVL: {state['idle_tvl']:.2f}")
+            logger.info(f"[{name}] Current TVL: {state['tvl']:.2f}")
             transfer_amount = msg["amount"]
-            # Check if transfer would make idle TVL negative
-            if transfer_amount > state["idle_tvl"]:
-                logger.warning(f"[{name}] Rejected transfer: would make idle TVL negative")
-                transfer_amount = state["idle_tvl"]  # Only transfer what's available
-            state["idle_tvl"] -= transfer_amount
-            logger.info(f"[{name}] Transferred {transfer_amount:.2f} from idle to active TVL")
-            logger.info(f"[{name}] New idle TVL: {state['idle_tvl']:.2f}")
+            # Check if transfer would make`` TVL negative
+            if transfer_amount > state["tvl"]:
+                logger.warning(f"[{name}] Rejected transfer: would make TVL negative")
+                transfer_amount = state["tvl"]  # Only transfer what's available
+            state["tvl"] -= transfer_amount
+            logger.info(
+                f"[{name}] Transferred {transfer_amount:.2f} from idle to active TVL"
+            )
+            logger.info(f"[{name}] New TVL: {state['tvl']:.2f}")
 
-        elif msg["type"] == "update_idle_tvl":
-            logger.info(f"[{name}] Current idle TVL: {state['idle_tvl']:.2f}")
-            state["idle_tvl"] = msg["amount"]
-            logger.info(f"[{name}] Updated idle TVL to: {state['idle_tvl']:.2f}")
+        elif msg["type"] == "update_tvl":
+            logger.info(f"[{name}] Current TVL: {state['tvl']:.2f}")
+            state["tvl"] = msg["amount"]
+            logger.info(f"[{name}] Updated TVL to: {state['tvl']:.2f}")
 
 
 async def worker_node(name, state, send_to, recv_from, worker_clock):
     while True:
-        logger.info("[OrionWorker] Starting new cycle")
         # Wait for clock tick
         await asyncio.sleep(5)
-    
+
         if state["portfolios_matrix"] is not None:
             # "Measure" ERC4626 performance
-            R_t = np.random.normal(loc=0.0, scale=0.03, size=state["portfolios_matrix"].shape[0])
-            logger.info(f"[OrionWorker] ERC4626 performance: {R_t}")
+            R_t = np.random.normal(
+                loc=0.01, scale=0.03, size=state["portfolios_matrix"].shape[0]
+            )
+            # Store latest returns for visualization
+            state["latest_returns"] = R_t.tolist()
+
+            # Notify external state tracking if callback exists
+            if "update_callback" in state and callable(state["update_callback"]):
+                state["update_callback"]("worker", name, state)
 
             # Compute ERC4626 performance
             PandL_t = state["portfolios_matrix"].T.dot(R_t).to_numpy()
-            logger.info(f"[OrionWorker] ERC4626 performance: {PandL_t}")
+            logger.info(f"[OrionWorker] Portfolios performance: {PandL_t}")
 
             active_tvl = state["portfolios_matrix"].sum(axis=0).to_numpy()
             logger.info(f"[OrionWorker] Active TVL: {active_tvl}")
@@ -170,27 +179,19 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
             updated_tvl = active_tvl + PandL_t
             logger.info(f"[OrionWorker] Updated TVL: {updated_tvl}")
 
-            # Update each vault's idle TVL with the corresponding updated TVL
+            # Update each vault's TVL with the corresponding updated TVL
             for i, tvl in enumerate(updated_tvl):
                 vault_name = f"Vault{i + 1}"
-                logger.info(f"[OrionWorker] Updating {vault_name} idle TVL to {tvl:.2f}")
-                await send_to(
-                    vault_name,
-                    {
-                        "type": "update_idle_tvl",
-                        "amount": tvl
-                    }
-                )
+                logger.info(f"[OrionWorker] Updating {vault_name} TVL to {tvl:.2f}")
+                await send_to(vault_name, {"type": "update_tvl", "amount": tvl})
 
         # Request states from all vaults
-        logger.info("[OrionWorker] Requesting states from all vaults")
         vault_states = {}
         for i in range(N_VAULTS):
             vault_name = f"Vault{i + 1}"
             await send_to(vault_name, {"type": "worker_request"})
-        
+
         # Collect responses from all vaults
-        logger.info("[OrionWorker] Collecting vault states")
         for _ in range(N_VAULTS):
             msg = await recv_from(name)
             if msg["type"] == "vault_state":
@@ -203,31 +204,37 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
         portfolio_dfs = []
         for vault_name, vault_state in vault_states.items():
             logger.info(f"[OrionWorker] Processing {vault_name}")
-            logger.info(f"[OrionWorker] Current idle TVL: {vault_state['idle_tvl']:.2f}")
-            
+            logger.info(f"[OrionWorker] Current TVL: {vault_state['tvl']:.2f}")
+
             if vault_state["internal_ledger_last_state"]:
                 curator_idx = int(vault_name.replace("Vault", "")) - 1
                 curator_key = state["key_array"][curator_idx]
                 portfolio = decrypt_json_dict(
                     curator_key, vault_state["internal_ledger_last_state"]
                 )
-                
+
                 # Create portfolio dataframe
-                df = pd.DataFrame.from_dict(portfolio, orient="index", columns=["weight"])
-                
+                df = pd.DataFrame.from_dict(
+                    portfolio, orient="index", columns=["weight"]
+                )
+
                 # Transfer TVL from idle to active
-                transfer_amount = vault_state["idle_tvl"]
+                transfer_amount = vault_state["tvl"]
                 if transfer_amount > 0:
-                    logger.info(f"[OrionWorker] Initiating transfer of {transfer_amount:.2f}")
+                    logger.info(
+                        f"[OrionWorker] Initiating transfer of {transfer_amount:.2f}"
+                    )
                     await send_to(
                         vault_name, {"type": "tvl_transfer", "amount": transfer_amount}
                     )
                     logger.info(f"[OrionWorker] Sent transfer request to {vault_name}")
-                    
+
                     # Weight portfolio by TVL
                     df = df * transfer_amount
                     portfolio_dfs.append(df)
-                    logger.info(f"[OrionWorker] Added portfolio from {vault_name} with TVL {transfer_amount:.2f}")
+                    logger.info(
+                        f"[OrionWorker] Added portfolio from {vault_name} with TVL {transfer_amount:.2f}"
+                    )
             else:
                 logger.info(f"[OrionWorker] No portfolio found for {vault_name}")
 
@@ -235,12 +242,12 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
         if portfolio_dfs:
             logger.info("[OrionWorker] Creating portfolios matrix")
             state["portfolios_matrix"] = pd.concat(portfolio_dfs, axis=1).fillna(0)
-            logger.info(f"[OrionWorker] Portfolios matrix created with shape: {state['portfolios_matrix'].shape}")
-            
+            logger.info(
+                f"[OrionWorker] Portfolios matrix created with shape: {state['portfolios_matrix'].shape}"
+            )
+
             # Compute final portfolio
             final_portfolio = state["portfolios_matrix"].sum(axis=1)
-            logger.info(f"[OrionWorker] Final portfolio computed:\n{final_portfolio}")
-            
             # Send final portfolio to metavault
             await send_to(
                 "MetaVault",
@@ -251,19 +258,16 @@ async def worker_node(name, state, send_to, recv_from, worker_clock):
             )
             logger.info("[OrionWorker] Sent final portfolio to MetaVault")
         else:
-            logger.info("[OrionWorker] No portfolios to create matrix")
             state["portfolios_matrix"] = None
 
 
 async def metavault_node(name, state, send_to, recv_from):
     while True:
         msg = await recv_from(name)
-        logger.info(f"[{name}] Received message of type: {msg['type']}")
-        
         if msg["type"] == "final_portfolio":
             logger.info(f"[{name}] Received final portfolio")
             state["final_portfolio"] = msg["portfolio"]
-            logger.info(f"[{name}] Updated state - Final portfolio:\n{state['final_portfolio']}")
+
 
 class Simulation:
     def __init__(self, graph):

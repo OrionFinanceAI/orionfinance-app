@@ -9,4 +9,3 @@ services:
     startCommand: gunicorn app:server
     plan: free
     branch: main
-    region: oregon
