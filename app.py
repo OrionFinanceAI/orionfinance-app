@@ -105,7 +105,7 @@ def update_vault_states(n, sim_state):
                         [
                             "TVL: ",
                             html.Span(
-                                f"${state.get('tvl', 'N/A'):.2f}" if state and isinstance(state.get('tvl'), float) else 'N/A',
+                                f"${state.get('tvl', ''):.2f}" if state and isinstance(state.get('tvl'), float) else '',
                                 style={"font-weight": "bold", "color": "#2a9d8f" if state else "#grey"},
                             ),
                         ]
@@ -121,7 +121,7 @@ def update_vault_states(n, sim_state):
                     html.P(
                         [
                             "TVL: ",
-                            html.Span("N/A", style={"font-weight": "bold", "color": "#grey"}),
+                            html.Span("", style={"font-weight": "bold", "color": "#grey"}),
                         ]
                     ),
                 ]
@@ -167,7 +167,7 @@ def update_curator_portfolios(n, sim_state):
                     html.P(
                         [
                             "Portfolio Status: ",
-                            html.Span("N/A", style={"font-weight": "bold", "color": "#grey"}),
+                            html.Span("", style={"font-weight": "bold", "color": "#grey"}),
                         ]
                     ),
                 ]
